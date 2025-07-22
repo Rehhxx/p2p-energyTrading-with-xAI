@@ -1,5 +1,5 @@
 from app.model.trade import TradeRequest, TradeResponse
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import logging
 
@@ -33,10 +33,15 @@ class TradeService:
         })
 
         return TradeResponse(
-            status="Success",
+            seller_id=trade.seller_id,
+            buyer_id=trade.buyer_id,
+            energy_amount=trade.energy_amount,
+            price_per_unit=trade.price_per_unit,
+            total_price=trade.energy_amount * trade.price_per_unit,
+            status="completed",
+            timestamp=trade.timestamp,
             message="Trade processed successfully",
-            trade_hash=trade_hash,
-            timestamp=trade.timestamp
+            trade_hash=trade_hash
         )
     
     def _log_trade_attempt(self, trade: TradeRequest):
@@ -59,7 +64,11 @@ class TradeService:
             raise ValueError("Price per unit must be greater than zero.")
         if trade.buyer_id == trade.seller_id:
             raise ValueError("Buyer and seller cannot be the same entity.")
-        if trade.timestamp > datetime.utcnow():
+        now_utc = datetime.now(timezone.utc)
+        trade_time = trade.timestamp
+        if trade_time.tzinfo is None:
+            trade_time = trade_time.replace(tzinfo=timezone.utc)
+        if trade_time > now_utc:
             raise ValueError("Trade timestamp cannot be in the future.")
         
     def _check_balances(self, trade: TradeRequest):
@@ -73,9 +82,12 @@ class TradeService:
         data = f"{trade.buyer_id}:{trade.seller_id}:{trade.energy_amount}:{trade.price_per_unit}:{trade.timestamp}"
         return hashlib.sha256(data.encode()).hexdigest()
     
-    #Get trade history and user balance
+    #Get trade history, user balance and all balances
     def get_trade_history(self):
         return self.trade_history
 
     def get_user_balance(self, user_id: str) -> float:
         return self.user_energy.get(user_id, 0.0)
+    
+    def get_all_balances(self):
+        return self.user_energy

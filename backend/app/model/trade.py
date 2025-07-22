@@ -8,6 +8,7 @@ class TradeRequest(BaseModel):
     buyer_id: str = Field(..., min_length = 3, max_length = 50, example = "user_buyer_007")
     energy_amount: float = Field(..., gt = 0, le = 10000, example = 50.0)
     price_per_unit: float = Field(..., gt = 0, le = 1000, example = 5.5)
+    timestamp: datetime = Field(default_factory = datetime.utcnow, example = "2023-10-01T12:00:00Z")
 
     @validator("seller_id", "buyer_id")
     def validate_ids(cls, v):
